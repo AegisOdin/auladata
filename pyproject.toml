@@ -1,0 +1,16 @@
+[tool.pytest.ini_options]
+testpaths = ["tests/backend"]
+pythonpath = ["app/backend"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [".venv", "app/frontend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/backend/app/routers/*.py" = ["B008"]
+"app/backend/app/dependencies/*.py" = ["B008"]
