@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="account"><div className="account-text"><strong>{user.name}</strong><small>{user.role === "ADMIN" ? "Administrador" : "Consulta"}</small></div><span className="avatar">{initials}</span><button className="icon-button logout" title="Cerrar sesión" aria-label="Cerrar sesión" disabled={leaving} onClick={() => void signOut()}><LogOut size={18} /></button></div>
       </header>
       <main id="content" className="main-content">{logoutError && <div className="alert" role="alert">{logoutError}</div>}{children}</main>
-      <footer className="main-footer"><span>AulaData · Gestión de espacios académicos</span><Link href="/aulas">Directorio del campus<ArrowUpRight size={13} /></Link></footer>
+      <footer className="main-footer"><span>AulaData · Gestión de espacios académicos</span><div className="mobile-environment"><Environment /></div><Link href="/aulas">Directorio del campus<ArrowUpRight size={13} /></Link></footer>
     </div>
   </div>;
 }
