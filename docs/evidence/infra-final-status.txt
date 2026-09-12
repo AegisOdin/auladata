@@ -1,0 +1,13 @@
+AulaData local container verification
+2026-09-12T22:59:27.7818726Z
+NAME                        IMAGE                     COMMAND                  SERVICE    CREATED       STATUS                    PORTS
+auladata-local-backend-1    auladata-local-backend    "uvicorn app.main:ap…"   backend    6 hours ago   Up 2 minutes (healthy)    127.0.0.1:8000->8000/tcp
+auladata-local-frontend-1   auladata-local-frontend   "docker-entrypoint.s…"   frontend   6 hours ago   Up 6 minutes (healthy)    127.0.0.1:3000->3000/tcp
+auladata-local-postgres-1   postgres:17-alpine        "docker-entrypoint.s…"   postgres   6 hours ago   Up 11 minutes (healthy)   5432/tcp
+/auladata-local-backend-1 state=running health=healthy failingStreak=0 restarts=0
+/auladata-local-frontend-1 state=running health=healthy failingStreak=0 restarts=0
+/auladata-local-postgres-1 state=running health=healthy failingStreak=0 restarts=0
+[auladata-local-backend:latest] ID=sha256:fe581ea062b84cae80250f920197b0333d7147d8f120452e32a09e85df612165 USER=10001:10001 SIZE=67053993
+[auladata-local-frontend:latest] ID=sha256:5e828813043449e1c15a20a15f9d9d31df15425131ead059347bcca7b1d4b480 USER=auladata SIZE=81181039
+{"status":"ok","service":"auladata-api","environment":"DEV","version":"v1.0.0-local","commit":"a6ac4966ef3c09edbd3c855a8668fe6e2e8410cf"}
+{"status":"ok","database":"ok"}
