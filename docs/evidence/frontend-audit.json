@@ -1,0 +1,1 @@
+{"actions":[],"advisories":{},"metadata":{"vulnerabilities":{"info":0,"low":0,"moderate":0,"high":0,"critical":0},"dependencies":98,"scope":"production"},"command":"pnpm audit --prod --audit-level=high --json","checked_at":"2026-09-12"}

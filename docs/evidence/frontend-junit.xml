@@ -1,0 +1,14 @@
+<testsuites id="" name="" tests="5" failures="0" skipped="0" errors="0" time="7.961073000000001">
+<testsuite name="auladata.spec.ts" timestamp="2026-09-12T22:57:58.962Z" hostname="" tests="5" failures="0" skipped="0" time="7.355" errors="0">
+<testcase name="sesión requerida, login incorrecto y metadatos runtime" classname="auladata.spec.ts" time="0.776">
+</testcase>
+<testcase name="ADMIN crea, consulta, edita, filtra y da de baja; persiste tras recargar" classname="auladata.spec.ts" time="3.16">
+</testcase>
+<testcase name="validación de clave duplicada y capacidad desde el formulario" classname="auladata.spec.ts" time="1.01">
+</testcase>
+<testcase name="VIEWER consulta, no ve administración y recibe403 en cada mutación" classname="auladata.spec.ts" time="1.232">
+</testcase>
+<testcase name="consulta móvil sin desbordamiento del documento" classname="auladata.spec.ts" time="1.177">
+</testcase>
+</testsuite>
+</testsuites>
