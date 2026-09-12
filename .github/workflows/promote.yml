@@ -1,0 +1,135 @@
+name: Promote the same release DEV to QA to PROD
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful CI run containing release-manifest
+        required: true
+        type: string
+      release_tag:
+        description: Existing vX.Y.Z tag at the artifact commit (required for PROD)
+        required: false
+        type: string
+      deploy_production:
+        description: Continue to the protected PROD environment after QA passes
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: auladata-promotion
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.validate.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+        run: |
+          [[ "$CI_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID" > run.json
+          python - <<'PY'
+          import json, os
+          run = json.load(open('run.json'))
+          assert run['conclusion'] == 'success', 'CI must pass'
+          assert run['path'] == '.github/workflows/ci.yml', 'Unexpected workflow'
+          assert run['event'] in {'push', 'workflow_dispatch'}, 'PR artifacts cannot deploy'
+          assert run['head_repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: incoming
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.ci_run_id }}
+      - name: Validate immutable images and release tag
+        id: validate
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          DEPLOY_PRODUCTION: ${{ inputs.deploy_production }}
+        run: |
+          python deploy/scripts/release.py incoming/release.env > release.env
+          source release.env
+          expected=$(python -c "import json; print(json.load(open('run.json'))['head_sha'])")
+          [[ "$GIT_COMMIT" == "$expected" ]] || exit 1
+          if [[ "$DEPLOY_PRODUCTION" == true && -z "$RELEASE_TAG" ]]; then
+            echo 'PROD requires a version tag at the artifact commit'; exit 1
+          fi
+          if [[ -n "$RELEASE_TAG" ]]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || exit 1
+            [[ $(git rev-parse "refs/tags/$RELEASE_TAG^{commit}") == "$GIT_COMMIT" ]] || exit 1
+            sed -i "s/^APP_VERSION=.*/APP_VERSION=$RELEASE_TAG/" release.env
+          fi
+          python deploy/scripts/release.py release.env
+          printf 'commit=%s\n' "$GIT_COMMIT" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: promoted-release
+          path: release.env
+          retention-days: 90
+
+  deploy-dev:
+    needs: prepare
+    runs-on: [self-hosted, linux, auladata-dev]
+    environment: DEV
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: promoted-release
+          path: release
+      - name: Deploy and smoke DEV
+        env:
+          ENV_FILE: /etc/auladata/dev.env
+        run: bash deploy/scripts/deploy-dev.sh release/release.env
+
+  deploy-qa:
+    needs: [prepare, deploy-dev]
+    runs-on: [self-hosted, linux, auladata-qa]
+    environment: QA
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: promoted-release
+          path: release
+      - name: Promote exact DEV digests and smoke QA
+        env:
+          ENV_FILE: /etc/auladata/qa.env
+        run: bash deploy/scripts/deploy-qa.sh release/release.env
+
+  deploy-prod:
+    needs: [prepare, deploy-qa]
+    if: inputs.deploy_production
+    runs-on: [self-hosted, linux, auladata-prod]
+    # Configure REQUIRED REVIEWERS and prevent self-review in repository settings.
+    environment: PROD
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: promoted-release
+          path: release
+      - name: Back up, promote exact QA digests and smoke PROD
+        env:
+          ENV_FILE: /etc/auladata/prod.env
+        run: bash deploy/scripts/deploy-prod.sh release/release.env

@@ -1,0 +1,67 @@
+name: auladata
+
+x-runtime: &runtime
+  APP_ENV: ${APP_ENV:?Set APP_ENV}
+  APP_VERSION: ${APP_VERSION:?Set APP_VERSION}
+  GIT_COMMIT: ${GIT_COMMIT:?Set GIT_COMMIT}
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to this environment's external PostgreSQL}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  JWT_EXPIRES_MINUTES: ${JWT_EXPIRES_MINUTES:-60}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  ADMIN_INITIAL_NAME: ${ADMIN_INITIAL_NAME:-Administración AulaData}
+  ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-}
+  ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+  VIEWER_INITIAL_NAME: ${VIEWER_INITIAL_NAME:-Consulta AulaData}
+  VIEWER_INITIAL_EMAIL: ${VIEWER_INITIAL_EMAIL:-}
+  VIEWER_INITIAL_PASSWORD: ${VIEWER_INITIAL_PASSWORD:-}
+  SEED_DEMO: ${SEED_DEMO:-false}
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Set immutable BACKEND_IMAGE from release.env}
+    environment: *runtime
+    restart: unless-stopped
+    init: true
+    mem_limit: 512m
+    cpus: 1.0
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:8000:8000"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set immutable FRONTEND_IMAGE from release.env}
+    environment:
+      API_INTERNAL_URL: http://backend:8000
+      HOSTNAME: 0.0.0.0
+      PORT: '3000'
+      NODE_ENV: production
+    restart: unless-stopped
+    init: true
+    mem_limit: 512m
+    cpus: 1.0
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}

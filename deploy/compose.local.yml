@@ -1,0 +1,65 @@
+name: auladata-local
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-auladata_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-auladata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: [postgres-local:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: app/backend/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-DEV}
+      APP_VERSION: ${APP_VERSION:-development}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRES_MINUTES: ${JWT_EXPIRES_MINUTES:-60}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ADMIN_INITIAL_NAME: ${ADMIN_INITIAL_NAME:-Administración AulaData}
+      ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      VIEWER_INITIAL_NAME: ${VIEWER_INITIAL_NAME:-Consulta AulaData}
+      VIEWER_INITIAL_EMAIL: ${VIEWER_INITIAL_EMAIL:-}
+      VIEWER_INITIAL_PASSWORD: ${VIEWER_INITIAL_PASSWORD:-}
+      SEED_DEMO: ${SEED_DEMO:-false}
+    ports: ['127.0.0.1:8000:8000']
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../app/frontend
+      dockerfile: Dockerfile
+    environment:
+      API_INTERNAL_URL: http://backend:8000
+      HOSTNAME: 0.0.0.0
+      PORT: '3000'
+      NODE_ENV: production
+    ports: ['127.0.0.1:3000:3000']
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
+
+volumes:
+  postgres-local:
