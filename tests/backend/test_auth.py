@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -162,3 +163,20 @@ def test_database_errors_do_not_expose_secrets(client, application):
     assert response.status_code == 503
     assert response.json() == {"detail": "Base de datos no disponible"}
     assert "private" not in response.text
+
+
+@pytest.mark.parametrize("kind", ["password_too_long", "extra_token", "invalid_body"])
+def test_validation_errors_do_not_echo_secrets(client, caplog, monkeypatch, kind):
+    secret = "sensitive-input-marker-" * 8
+    payload = {"email": "admin@example.com", "password": secret}
+    if kind == "extra_token":
+        payload = {"email": "admin@example.com", "password": TEST_PASSWORD, "token": secret}
+    elif kind == "invalid_body":
+        payload = [{"password": secret}]
+    monkeypatch.setattr(logging.getLogger("auladata"), "propagate", True)
+    response = client.post("/api/v1/auth/login", json=payload, headers=CSRF)
+    assert response.status_code == 422
+    assert secret not in response.text
+    assert all(set(error) == {"type", "loc", "msg"} for error in response.json()["detail"])
+    assert "request_failed" in caplog.text
+    assert secret not in caplog.text
