@@ -9,6 +9,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
 
 
@@ -97,6 +99,21 @@ def main() -> int:
             f"FAIL: smoke HTTP {exc.code}; check server logs without exposing credentials",
             file=sys.stderr,
         )
+        if exc.code == 401:
+            print(
+                "Check cookie transport (HTTPS/Secure) and synchronized clocks for JWT.",
+                file=sys.stderr,
+            )
+            try:
+                server_date = parsedate_to_datetime(exc.headers.get("Date", ""))
+                skew = abs((datetime.now(UTC) - server_date).total_seconds())
+                if skew > 60:
+                    print(
+                        f"Observed server/client clock difference: approximately {skew:.0f}s.",
+                        file=sys.stderr,
+                    )
+            except (TypeError, ValueError):
+                pass
     except (urllib.error.URLError, TimeoutError):
         print("FAIL: smoke could not reach a healthy service", file=sys.stderr)
     except (ValueError, json.JSONDecodeError) as exc:

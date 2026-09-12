@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
@@ -10,6 +11,7 @@ from app.config import Settings
 COOKIE_NAME = "auladata_session"
 ISSUER = "auladata-api"
 AUDIENCE = "auladata-browser"
+logger = logging.getLogger("auladata.auth")
 password_hasher = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2)
 # Unknown accounts still perform an Argon2 verification to reduce timing disclosure.
 _dummy_hash = password_hasher.hash(token_urlsafe(32))
@@ -54,5 +56,6 @@ def read_token(token: str, settings: Settings) -> int | None:
         )
         user_id = int(payload["sub"])
         return user_id if user_id > 0 else None
-    except (jwt.InvalidTokenError, TypeError, ValueError, KeyError):
+    except (jwt.InvalidTokenError, TypeError, ValueError, KeyError) as exc:
+        logger.warning("session_rejected reason=%s", type(exc).__name__)
         return None

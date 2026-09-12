@@ -119,3 +119,9 @@ PROD exige HTTPS, `COOKIE_SECURE=true` y un respaldo completo exitoso antes de m
 Mantén `main` y el tag de release apuntando al commit aprobado cuando completes la estrategia Git. Si una fusión genera un commit diferente, su SHA no cumple la comprobación del artefacto: usa fast-forward cuando sea posible o valida un nuevo candidato antes de promover.
 
 Referencias oficiales: [Compose services](https://docs.docker.com/reference/compose-file/services/), [artefactos entre workflows](https://docs.github.com/en/actions/tutorials/store-and-share-data), [protecciones de environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
+
+## Relojes y sesiones JWT
+
+Mantén el reloj UTC sincronizado en hosts, VM y proxy mediante el servicio de hora de la infraestructura. Una sesión recién creada puede dar 401 si el reloj salta y el JWT parece vencido o emitido en el futuro. Comprueba `date -u`, `timedatectl status` y la fecha HTTP; no amplíes la vida del JWT ni su tolerancia para ocultar desfases de horas. El smoke informa diferencias grandes observadas al recibir 401, además de recordar revisar HTTPS/cookies.
+
+En Docker Desktop/WSL2 compara `Get-Date -AsUTC` de PowerShell con `wsl -d docker-desktop -- date -u`. Un reinicio de Docker Desktop conserva volúmenes y puede recuperarse con `docker compose ... up -d --wait`. Un apagado global de WSL afecta otras distribuciones y procesos: evalúa su impacto antes de hacerlo. No cambies la hora ni zona horaria de Windows como parte del despliegue de la app. Referencias: [reinicio de Docker Desktop](https://docs.docker.com/reference/cli/docker/desktop/restart/) e [incidencias de desfase WSL documentadas por Microsoft](https://github.com/microsoft/WSL/issues/10006).
