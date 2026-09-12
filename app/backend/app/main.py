@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.database import create_database
+from app.routers import auth, classrooms
 
 logger = logging.getLogger("auladata.api")
 
@@ -100,6 +101,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         return {"status": "ok", "database": "ok"}
 
+    application.include_router(auth.router)
+    application.include_router(classrooms.router)
     return application
 
 

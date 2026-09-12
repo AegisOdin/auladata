@@ -8,7 +8,13 @@ from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        case_sensitive=False,
+        env_ignore_empty=True,
+        hide_input_in_errors=True,
+    )
 
     app_env: Literal["DEV", "QA", "PROD", "TEST"] = "DEV"
     app_version: str = "development"
@@ -41,8 +47,8 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET debe contener al menos 32 caracteres aleatorios")
         try:
             database = make_url(self.database_url.get_secret_value())
-        except Exception as exc:
-            raise ValueError("DATABASE_URL no tiene un formato válido") from exc
+        except Exception:
+            raise ValueError("DATABASE_URL no tiene un formato válido") from None
         if database.drivername != "postgresql+psycopg" and not (
             self.testing and self.app_env == "TEST" and database.drivername == "sqlite+pysqlite"
         ):
