@@ -4,7 +4,7 @@ import "@fontsource-variable/manrope";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "AulaData | Gestión de aulas", template: "%s | AulaData" },
+  title: { default: "Hola", template: "%s | AulaData" },
   description: "Gestión de espacios académicos, disponibilidad y capacidad de aulas.",
   icons: { icon: "/icon.svg" },
 };
